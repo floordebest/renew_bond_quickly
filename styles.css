@@ -1,0 +1,16 @@
+.content {
+    max-width: 500px;
+    margin: auto;
+    text-align: center;
+    padding: 10px;
+    border: 10px blue;
+
+}
+
+.button {
+    padding: 2px;
+}
+
+.title {
+    text-transform: uppercase;
+}
