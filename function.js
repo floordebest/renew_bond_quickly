@@ -14,8 +14,8 @@ async function getBond()  {
     try {
       let data = await Pact.fetch.local(cmd, "https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact");
       if (data.result.status === "success") {
-        console.log(data.result.data)
-        console.log(data.result.data.guard.keys[0].toString());
+        // console.log(data.result.data)
+        // console.log(data.result.data.guard.keys[0].toString());
         localStorage.setItem("bondName", bondName);
         localStorage.setItem("bondOwnerKey", data.result.data.guard.keys[0].toString())
         localStorage.setItem("account", data.result.data.account.toString())
@@ -127,7 +127,7 @@ async function getBond()  {
             
                 // Wait for the result of the transaction with the TX id (listen)
                 const result = await listen.json();
-                console.log(result);
+                //console.log(result);
                 if (result.result.error) {
                     document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
                 }
