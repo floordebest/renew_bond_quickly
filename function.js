@@ -57,9 +57,9 @@ async function getBond()  {
             <label id="bondLabel">
               Found Bond, Renew Date: ${data.result.data.date.timep}
             </label><br>
-            <button onclick="renewBond()" type="button">Renew, I pay for Gas</button>
-            <button onclick="renewBondFreeGas()" type="button">Renew, try GasStation</button>
-            <button onclick="closeBond()" type="button">Close/Stop bond</button>
+            <button onclick="renewBond(0,0)" type="button">Renew, I pay for Gas</button>
+            <button onclick="renewBond(0,1)" type="button">Renew, try GasStation</button>
+            <button onclick="closeBond(0)" type="button">Close/Stop bond</button>
             <p id="pLabel">
               <label id="resultLabel0"></label>
             </p>
@@ -103,8 +103,8 @@ async function getBond()  {
                   <label id="bondLabel">
                     Renew Date: ${resData[i].bond.date.timep}
                   </label><br>
-                  <button onclick="renewBond(${i})" type="button">Renew, I pay for Gas</button>
-                  <button onclick="renewBondFreeGas(${i})" type="button">Renew, try GasStation</button>
+                  <button onclick="renewBond(${i}, 0)" type="button">Renew, I pay for Gas</button>
+                  <button onclick="renewBond(${i}, 1)" type="button">Renew, try GasStation</button>
                   <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
                   <p id="pLabel">
                     <label id="resultLabel${i}"></label>
@@ -132,10 +132,11 @@ async function getBond()  {
     }
   }
 
-  async function renewBond(id) {
+  async function renewBond(id, gasfree) {
     var bondName;
     var pubKeyToSign;
     var account;
+
 
     if (id) {
       const bonds = JSON.parse(localStorage.getItem("bonds"));
@@ -149,15 +150,18 @@ async function getBond()  {
       account = localStorage.getItem("account");
     }
 
+    var caplist = [Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])]
+
+    if (gasfree != 0) {
+      caplist.push(Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]));
+    }
+
     document.getElementById("resultLabel" + id).innerHTML = "Continue in Chainweaver or Zelcore and come back when finished.... Waiting for wallet response";
 
     const cmd = {
         pactCode: `(relay.pool.renew (read-msg 'bond))`,
-        caps: [
-          //Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
-          Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])
-        ],
-        sender: account,
+        caps: caplist,
+        sender: gasfree == 0 ? account : 'relay-free-gas',
         gasLimit: 20000,
         gasPrice: 0.00000001,
         networkId: "mainnet01",
@@ -170,58 +174,6 @@ async function getBond()  {
       }
 
       const sign = await Pact.wallet.sign(cmd);
-      if (sign) {
-        const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
-            headers: {"Content-Type" : "application/json"},
-            body: JSON.stringify({"cmds": [sign]}),
-            method: "POST"
-        })
-        if (tx.ok) {
-            const data = await tx.json();
-            document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
-            localStorage.setItem("tx", data.requestKeys)  
-        }
-      } else {
-        document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
-      }
-      getTX(id);
-    }
-
-  async function renewBondFreeGas(id) {
-    var bondName;
-    var pubKeyToSign;
-
-    if (id) {
-      const bonds = JSON.parse(localStorage.getItem("bonds"));
-      bondName = bonds[id].key;
-      pubKeyToSign = bonds[id].bond.guard.keys[0];
-    } else {
-      id = 0;
-      bondName = localStorage.getItem("bondName");
-      pubKeyToSign = localStorage.getItem("bondOwnerKey");
-    }
-    document.getElementById("resultLabel" + id).innerHTML = "Continue in Chainweaver or Zelcore and come back when finished.... Waiting for wallet response";
-
-    const cmd = {
-        pactCode: `(relay.pool.renew (read-msg 'bond))`,
-        caps: [
-          Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
-          Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])
-        ],
-        sender: 'relay-free-gas',
-        gasLimit: 20000,
-        gasPrice: 0.00000001,
-        networkId: "mainnet01",
-        chainId: "2",
-        ttl: 1000,
-        signingPubKey: pubKeyToSign,
-        envData: {
-          bond: bondName
-        }
-      }
-
-      const sign = await Pact.wallet.sign(cmd);
-      
       if (sign) {
         const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
             headers: {"Content-Type" : "application/json"},
@@ -295,56 +247,56 @@ async function getBond()  {
     getTX(id);
   }
 
-    async function getTX(id) {
-        console.log("Listening for TX's...")
-        const tx = localStorage.getItem("tx");
-    
-        if (tx != null) {
-            try {
-                const listen = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/listen", {
-                    headers: {"Content-Type" : "application/json"},
-                    body: JSON.stringify({"listen" : tx}),
-                    method: "POST"
-                })
-            
-                // Wait for the result of the transaction with the TX id (listen)
-                const result = await listen.json();
-                //console.log(result);
-                if (id) {
-                  if (result.result.error) {
-                    document.getElementById("resultLabel" + id).innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
-                  }
-                  else {
-                    document.getElementById("resultLabel" + id).innerHTML = tx + " : " + result.result.status;
-                  }
-                } else {
-                    if (result.result.error) {
-                      document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
-                    }
-                  else {
-                      document.getElementById("resultLabel").innerHTML = tx + " : " + result.result.status;
-                    }
-                }
+  async function getTX(id) {
+      console.log("Listening for TX's...")
+      const tx = localStorage.getItem("tx");
+      
+      if (tx != null) {
+          try {
+              const listen = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/listen", {
+                  headers: {"Content-Type" : "application/json"},
+                  body: JSON.stringify({"listen" : tx}),
+                  method: "POST"
+              })
+          
+              // Wait for the result of the transaction with the TX id (listen)
+              const result = await listen.json();
+              //console.log(result);
+              if (id) {
                 if (result.result.error) {
-                    document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
+                  document.getElementById("resultLabel" + id).innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
                 }
                 else {
+                  document.getElementById("resultLabel" + id).innerHTML = tx + " : " + result.result.status;
+                }
+              } else {
+                  if (result.result.error) {
+                    document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
+                  }
+                else {
                     document.getElementById("resultLabel").innerHTML = tx + " : " + result.result.status;
-                }
-                
-                localStorage.removeItem("tx");
-            } catch (error) {
-                // Run function again till result
-                if (id) {
-                    document.getElementById("resultLabel" + id).innerHTML = tx + " : could net get a response, trying again.. please hold";
-                } else {
-                    document.getElementById("resultLabel").innerHTML = tx + " : could net get a response, trying again.. please hold";
-                }
-                getTX();
-            }
-        } else {
-            console.log("No TX's in memory")
-        }
-    }
+                  }
+              }
+              if (result.result.error) {
+                  document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
+              }
+              else {
+                  document.getElementById("resultLabel").innerHTML = tx + " : " + result.result.status;
+              }
+              
+              localStorage.removeItem("tx");
+          } catch (error) {
+              // Run function again till result
+              if (id) {
+                  document.getElementById("resultLabel" + id).innerHTML = tx + " : could net get a response, trying again.. please hold";
+              } else {
+                  document.getElementById("resultLabel").innerHTML = tx + " : could net get a response, trying again.. please hold";
+              }
+              getTX();
+          }
+      } else {
+          console.log("No TX's in memory")
+      }
+  }
 
     
