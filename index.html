@@ -18,38 +18,36 @@
         <script src="https://cdn.jsdelivr.net/npm/pact-lang-api@4.1.2/pact-lang-api-global.min.js"></script>
         <script src="./function.js"></script>
     </head>
-    <body onload="getTX()">
+    <body onload="loadAccount()">
         <div class="content">
-            <h1 class="title">Kadena Bond Quick Renew</h1>
+            <h1 class="title">Kadena Bond Quick Renew </h1>
+            <div id="logoutButton">
+                <button onclick="logout()" type="button">Search Again</button>
+            </div>
             <div id="loginPage">
-                <form id="loginForm">
-                    <div id="enterBond">
-                        <label>Enter your Bondname (accountname:date of first bond):</label><br>    
-                        <input id="bondName"/>
+                <form id="enterBond">
+                    <div id="findBond">
+                        <label id="enterBond">Enter your Bondname:&emsp;&emsp;
+                            <input id="bondName"/>
+                            <button onclick="getBond()" type="button">Get Bond</button>
+                        </label>
+                    </div>
+                    <div id="findAccount">
+                        <label id="enterAcc">Search with accountname:&nbsp;
+                            <input id="accName"/>
+                            <button onclick="searchBond()" type="button">Search</button>
+                        </label>   
+                    </div>
+                </form>
+                <form id="showBonds">
+                    <div id="bond">
                         <br>
-                    </div>
-                    <div>
-                        <label id="bondLabel"></label>
-                    </div>
-                    <div id="loginButton" class="button">
-                        <button onclick="getBond()" type="button">Login</button>
-                    </div>
-                    <div id="renewButton" class="button">
-                        <button onclick="renewBond()" type="button">Renew Now, I pay for Gas</button>
-                    </div>
-                    <div id="renewButtonGasStation" class="button">
-                        <button onclick="renewBondFreeGas()" type="button">Renew Now, try GasStation</button>
-                    </div>
-                    <div>
                         <label id="resultLabel"></label>
                     </div>
+                    
                 </form>
             </div>
         </div>
-        <script>
-            document.getElementById("renewButton").style.display = "none";
-            document.getElementById("renewButtonGasStation").style.display = "none";
-        </script>
     </body>
     
 </html>

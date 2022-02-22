@@ -1,7 +1,36 @@
 var creationTime = () => Math.round(new Date().getTime() / 1000) - 15; // Creates a timestamp
 
+var bondAddress = "26f3f16f378de0b45cb2e02660ad03369e9c166df756e6d270f421bd427eeed9:2021-07-04";
+
+function loadAccount() {
+  const account = localStorage.getItem("account");
+  const bond = localStorage.getItem("bondName");
+
+  if (account) {
+    //localStorage.clear();
+    console.log(account);
+    document.getElementById("enterBond").style.display = "none";
+    // Load single bond
+    getBond();
+  } else {
+    document.getElementById("showBonds").style.display = "none";
+    document.getElementById("logoutButton").style.display = "none";
+  }
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.reload()
+}
+
 async function getBond()  {
-    var bondName = document.getElementById("bondName").value;
+    const account = localStorage.getItem("account");
+    var bondName;
+    if (account) {
+      bondName = localStorage.getItem("bondName");
+    } else {
+      bondName = document.getElementById("bondName").value;
+    }
 
     const cmd = {
         pactCode: `(relay.pool.get-bond (read-msg 'bond))`,
@@ -14,28 +43,114 @@ async function getBond()  {
     try {
       let data = await Pact.fetch.local(cmd, "https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact");
       if (data.result.status === "success") {
-        // console.log(data.result.data)
-        // console.log(data.result.data.guard.keys[0].toString());
-        localStorage.setItem("bondName", bondName);
-        localStorage.setItem("bondOwnerKey", data.result.data.guard.keys[0].toString())
-        localStorage.setItem("account", data.result.data.account.toString())
+        if (!account) {
+          localStorage.setItem("bondName", bondName);
+          localStorage.setItem("bondOwnerKey", data.result.data.guard.keys[0].toString());
+          localStorage.setItem("account", data.result.data.account.toString());
+        }
         document.getElementById("enterBond").style.display = "none";
-        document.getElementById("loginButton").style.display = "none";
-        document.getElementById("renewButton").style.display = "contents";
-        document.getElementById("renewButtonGasStation").style.display = "contents";
-        document.getElementById("bondLabel").innerHTML = "Found Bond, Renew Date: " + data.result.data.date.timep 
-        return true;
+        document.getElementById("showBonds").style.display = "contents";
+        document.getElementById("logoutButton").style.display = "contents";
+        document.getElementById("showBonds").innerHTML += 
+        `
+          <div id="bondData">
+            <label id="bondTitle">
+              <b>Your Bond:</b> <i>${bondName}</i>
+            </label><br>
+            <label id="bondLabel">
+              Found Bond, Renew Date: ${data.result.data.date.timep}
+            </label><br>
+            <button onclick="renewBond()" type="button">Renew, I pay for Gas</button>
+            <button onclick="renewBondFreeGas()" type="button">Renew, try GasStation</button>
+            <button onclick="closeBond()" type="button">Close/Stop bond</button>
+          </div>
+        `
       }
-      else return false;
     } catch (e){
       console.log(e)
     }
   }
 
-  async function renewBond() {
-    const bondName = localStorage.getItem("bondName");
-    const pubKeyToSign = localStorage.getItem("bondOwnerKey");
-    const account = localStorage.getItem("account");
+  function closeBond(bondID) {
+    const bonds = JSON.parse(localStorage.getItem("bonds"))
+    console.log(bonds[bondID]);
+  }
+
+  async function searchBond()  {
+    const account = document.getElementById("accName").value;
+
+    // Fetch All Bonds
+    const cmd = {
+      pactCode: `(use relay.pool) (map (get-keyed-bond) (bond-keys))`,
+      meta: Pact.lang.mkMeta("", "2", 0.00000001, 60000, creationTime(), 1000),
+      chainId: "2",
+    }
+    try {
+      let data = await Pact.fetch.local(cmd, "https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact");
+      if (data.result.status === "success") {
+        const resData = data.result.data;
+        localStorage.setItem("bonds", JSON.stringify(resData));
+        for (var i = 0; i < resData.length; i++) {
+          const accountName = resData[i].bond.account;
+          if (accountName.includes(account)) {
+            console.log(accountName);
+            document.getElementById("enterBond").style.display = "none";
+            document.getElementById("showBonds").style.display = "contents";
+            document.getElementById("logoutButton").style.display = "contents";
+            if (resData[i].bond.terminated == false) {
+              document.getElementById("showBonds").innerHTML += 
+              `
+                <div id="bondData">
+                  <label id="bondTitle">
+                    <div id="bond${i}>" 
+                      <b>Your Bond:</b> <i>${resData[i].key}</i>
+                    </div>
+                  </label><br>
+                  <label id="bondLabel">
+                    Renew Date: ${resData[i].bond.date.timep}
+                  </label><br>
+                  <button onclick="renewBond(${i})" type="button">Renew, I pay for Gas</button>
+                  <button onclick="renewBondFreeGas(${i})" type="button">Renew, try GasStation</button>
+                  <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
+                </div>
+              `
+            } else {
+              document.getElementById("showBonds").innerHTML += 
+              `
+              <div id="bondData">
+                <label id="bondTitle">
+                  <b>Your Bond:</b> <i>${resData[i].key}</i>
+                </label><br>
+                <label id="bondLabel">
+                  Bond is no longer active, Latest Renew Date: ${resData[i].bond.date.timep}
+                </label><br>
+              </div>
+              `
+            }
+          }
+        }
+      }
+    } catch (e){
+      console.log(e)
+    }
+  }
+
+  async function renewBond(id) {
+    var bondName;
+    var pubKeyToSign;
+    var account;
+
+    if (id) {
+      const bonds = JSON.parse(localStorage.getItem("bonds"));
+      bondName = bonds[id].key;
+      pubKeyToSign = bonds[id].bond.guard.keys[0];
+      account = bonds[id].bond.account;
+    } else {
+      bondName = localStorage.getItem("bondName");
+      pubKeyToSign = localStorage.getItem("bondOwnerKey");
+      account = localStorage.getItem("account");
+    }
+
 
     const cmd = {
         pactCode: `(relay.pool.renew (read-msg 'bond))`,
@@ -145,3 +260,5 @@ async function getBond()  {
             console.log("No TX's in memory")
         }
     }
+
+    
