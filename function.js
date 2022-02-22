@@ -6,9 +6,8 @@ function loadAccount() {
 
   if (account) {
     //localStorage.clear();
-    console.log(account);
+    //console.log(account);
     document.getElementById("enterBond").style.display = "none";
-    // Load single bond
     getBond();
   } else {
     document.getElementById("showBonds").style.display = "none";
@@ -61,17 +60,15 @@ async function getBond()  {
             <button onclick="renewBond()" type="button">Renew, I pay for Gas</button>
             <button onclick="renewBondFreeGas()" type="button">Renew, try GasStation</button>
             <button onclick="closeBond()" type="button">Close/Stop bond</button>
+            <p id="pLabel">
+              <label id="resultLabel0"></label>
+            </p>
           </div>
         `
       }
     } catch (e){
       console.log(e)
     }
-  }
-
-  function closeBond(bondID) {
-    const bonds = JSON.parse(localStorage.getItem("bonds"))
-    console.log(bonds[bondID]);
   }
 
   async function searchBond()  {
@@ -91,7 +88,6 @@ async function getBond()  {
         for (var i = 0; i < resData.length; i++) {
           const accountName = resData[i].bond.account;
           if (accountName.includes(account)) {
-            console.log(accountName);
             document.getElementById("enterBond").style.display = "none";
             document.getElementById("showBonds").style.display = "contents";
             document.getElementById("logoutButton").style.display = "contents";
@@ -110,6 +106,9 @@ async function getBond()  {
                   <button onclick="renewBond(${i})" type="button">Renew, I pay for Gas</button>
                   <button onclick="renewBondFreeGas(${i})" type="button">Renew, try GasStation</button>
                   <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
+                  <p id="pLabel">
+                    <label id="resultLabel${i}"></label>
+                  </p>
                 </div>
               `
             } else {
@@ -129,7 +128,7 @@ async function getBond()  {
         }
       }
     } catch (e){
-      console.log(e)
+      console.log("Error found: " + e);
     }
   }
 
@@ -144,11 +143,13 @@ async function getBond()  {
       pubKeyToSign = bonds[id].bond.guard.keys[0];
       account = bonds[id].bond.account;
     } else {
+      id = 0;
       bondName = localStorage.getItem("bondName");
       pubKeyToSign = localStorage.getItem("bondOwnerKey");
       account = localStorage.getItem("account");
     }
 
+    document.getElementById("resultLabel" + id).innerHTML = "Continue in Chainweaver or Zelcore and come back when finished.... Waiting for wallet response";
 
     const cmd = {
         pactCode: `(relay.pool.renew (read-msg 'bond))`,
@@ -177,7 +178,7 @@ async function getBond()  {
         })
         if (tx.ok) {
             const data = await tx.json();
-            document.getElementById("resultLabel").innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
+            document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
             localStorage.setItem("tx", data.requestKeys)  
         }
       } else {
@@ -186,9 +187,20 @@ async function getBond()  {
       getTX();
     }
 
-  async function renewBondFreeGas() {
-    const bondName = localStorage.getItem("bondName");
-    const pubKeyToSign = localStorage.getItem("bondOwnerKey");
+  async function renewBondFreeGas(id) {
+    var bondName;
+    var pubKeyToSign;
+
+    if (id) {
+      const bonds = JSON.parse(localStorage.getItem("bonds"));
+      bondName = bonds[id].key;
+      pubKeyToSign = bonds[id].bond.guard.keys[0];
+    } else {
+      id = 0;
+      bondName = localStorage.getItem("bondName");
+      pubKeyToSign = localStorage.getItem("bondOwnerKey");
+    }
+    document.getElementById("resultLabel" + id).innerHTML = "Continue in Chainweaver or Zelcore and come back when finished.... Waiting for wallet response";
 
     const cmd = {
         pactCode: `(relay.pool.renew (read-msg 'bond))`,
@@ -209,6 +221,7 @@ async function getBond()  {
       }
 
       const sign = await Pact.wallet.sign(cmd);
+      
       if (sign) {
         const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
             headers: {"Content-Type" : "application/json"},
@@ -217,7 +230,7 @@ async function getBond()  {
         })
         if (tx.ok) {
             const data = await tx.json();
-            document.getElementById("resultLabel").innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
+            document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
             localStorage.setItem("tx", data.requestKeys)  
         }
       } else {
@@ -225,6 +238,61 @@ async function getBond()  {
       }
       getTX();
     }
+
+  async function closeBond(id) {
+    var bondName;
+    var pubKeyToSign;
+    var account;
+
+    if (id) {
+      const bonds = JSON.parse(localStorage.getItem("bonds"));
+      bondName = bonds[id].key;
+      pubKeyToSign = bonds[id].bond.guard.keys[0];
+      account = bonds[id].bond.account;
+    } else {
+      id = 0;
+      bondName = localStorage.getItem("bondName");
+      pubKeyToSign = localStorage.getItem("bondOwnerKey");
+      account = localStorage.getItem("account");
+    }
+
+    document.getElementById("resultLabel" + id).innerHTML = "Continue in Chainweaver or Zelcore and come back when finished.... Waiting for wallet response";
+
+
+    const cmd = {
+      pactCode: `(relay.pool.unbond (read-msg 'bond))`,
+      caps: [
+        //Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
+        Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])
+      ],
+      sender: account,
+      signingPubKey: pubKeyToSign,
+      gasLimit: 22000,
+      gasPrice: 0.00000001,
+      networkId: "mainnet01",
+      chainId: "2",
+      ttl: 1500,
+      envData: {
+        bond: bondName
+      }
+    }
+    const sign = await Pact.wallet.sign(cmd);
+    if (sign) {
+      const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
+          headers: {"Content-Type" : "application/json"},
+          body: JSON.stringify({"cmds": [sign]}),
+          method: "POST"
+      })
+      if (tx.ok) {
+          const data = await tx.json();
+          document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
+          localStorage.setItem("tx", data.requestKeys)  
+      }
+    } else {
+        console.log("Something is going wrong with signing");
+    }
+    getTX(id);
+  }
 
     async function getTX() {
         console.log("Listening for TX's...")
