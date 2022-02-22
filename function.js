@@ -182,9 +182,9 @@ async function getBond()  {
             localStorage.setItem("tx", data.requestKeys)  
         }
       } else {
-          console.log("Something is going wrong with signing");
+        document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
       }
-      getTX();
+      getTX(id);
     }
 
   async function renewBondFreeGas(id) {
@@ -234,9 +234,9 @@ async function getBond()  {
             localStorage.setItem("tx", data.requestKeys)  
         }
       } else {
-          console.log("Something is going wrong with signing");
+        document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
       }
-      getTX();
+      getTX(id);
     }
 
   async function closeBond(id) {
@@ -289,12 +289,13 @@ async function getBond()  {
           localStorage.setItem("tx", data.requestKeys)  
       }
     } else {
-        console.log("Something is going wrong with signing");
+      document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
+
     }
     getTX(id);
   }
 
-    async function getTX() {
+    async function getTX(id) {
         console.log("Listening for TX's...")
         const tx = localStorage.getItem("tx");
     
@@ -309,6 +310,21 @@ async function getBond()  {
                 // Wait for the result of the transaction with the TX id (listen)
                 const result = await listen.json();
                 //console.log(result);
+                if (id) {
+                  if (result.result.error) {
+                    document.getElementById("resultLabel" + id).innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
+                  }
+                  else {
+                    document.getElementById("resultLabel" + id).innerHTML = tx + " : " + result.result.status;
+                  }
+                } else {
+                    if (result.result.error) {
+                      document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
+                    }
+                  else {
+                      document.getElementById("resultLabel").innerHTML = tx + " : " + result.result.status;
+                    }
+                }
                 if (result.result.error) {
                     document.getElementById("resultLabel").innerHTML = tx + " : <br>"  + result.result.status + " : <br>" + result.result.error.message;
                 }
@@ -319,7 +335,11 @@ async function getBond()  {
                 localStorage.removeItem("tx");
             } catch (error) {
                 // Run function again till result
-                console.log("Polling Later");
+                if (id) {
+                    document.getElementById("resultLabel" + id).innerHTML = tx + " : could net get a response, trying again.. please hold";
+                } else {
+                    document.getElementById("resultLabel").innerHTML = tx + " : could net get a response, trying again.. please hold";
+                }
                 getTX();
             }
         } else {
