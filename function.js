@@ -1,7 +1,5 @@
 var creationTime = () => Math.round(new Date().getTime() / 1000) - 15; // Creates a timestamp
 
-var bondAddress = "26f3f16f378de0b45cb2e02660ad03369e9c166df756e6d270f421bd427eeed9:2021-07-04";
-
 function loadAccount() {
   const account = localStorage.getItem("account");
   const bond = localStorage.getItem("bondName");
