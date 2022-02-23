@@ -55,7 +55,7 @@ async function getBond()  {
               <b>Your Bond:</b> <i>${bondName}</i>
             </label><br>
             <label id="bondLabel">
-              Found Bond, Renew Date: ${data.result.data.date.timep}
+              Found Bond, Last Renew Date: ${data.result.data.date.timep}
             </label><br>
             <button onclick="renewBond(0,0)" type="button">Renew, I pay for Gas</button>
             <button onclick="renewBond(0,1)" type="button">Renew, try GasStation</button>
@@ -101,7 +101,7 @@ async function getBond()  {
                     </div>
                   </label><br>
                   <label id="bondLabel">
-                    Renew Date: ${resData[i].bond.date.timep}
+                    Last Renew Date: ${resData[i].bond.date.timep}
                   </label><br>
                   <button onclick="renewBond(${i}, 0)" type="button">Renew, I pay for Gas</button>
                   <button onclick="renewBond(${i}, 1)" type="button">Renew, try GasStation</button>
