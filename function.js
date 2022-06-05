@@ -106,7 +106,7 @@ async function getBond()  {
                     Renew Date: ${resData[i].bond.date.timep}
                   </label><br>
                   <button onclick="renewBondXWallet(${i}, 0)" type="button">Renew through X-Wallet</button>
-                  <button onclick="renewBondXWallet(${i}, 0)" type="button">Renew through X-Wallet Gasfree</button>
+                  <button onclick="renewBondXWallet(${i}, 1)" type="button">Renew through X-Wallet Gasfree</button>
                   <button onclick="renewBond(${i}, 0)" type="button">Renew, I pay for Gas</button>
                   <button onclick="renewBond(${i}, 1)" type="button">Renew, try GasStation</button>
                   <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
