@@ -55,8 +55,10 @@ async function getBond()  {
               <b>Your Bond:</b> <i>${bondName}</i>
             </label><br>
             <label id="bondLabel">
-              Found Bond, Last Renew Date: ${data.result.data.date.timep}
+              Found Bond, Renew Date: ${data.result.data.date.timep}
             </label><br>
+            <button onclick="renewBondXWallet(0, 0)" type="button">Renew through X-Wallet</button>
+            <button onclick="renewBondXWallet(0, 1)" type="button">Renew through X-Wallet Gasfree</button>
             <button onclick="renewBond(0,0)" type="button">Renew, I pay for Gas</button>
             <button onclick="renewBond(0,1)" type="button">Renew, try GasStation</button>
             <button onclick="closeBond(0)" type="button">Close/Stop bond</button>
@@ -101,8 +103,10 @@ async function getBond()  {
                     </div>
                   </label><br>
                   <label id="bondLabel">
-                    Last Renew Date: ${resData[i].bond.date.timep}
+                    Renew Date: ${resData[i].bond.date.timep}
                   </label><br>
+                  <button onclick="renewBondXWallet(${i}, 0)" type="button">Renew through X-Wallet</button>
+                  <button onclick="renewBondXWallet(${i}, 0)" type="button">Renew through X-Wallet Gasfree</button>
                   <button onclick="renewBond(${i}, 0)" type="button">Renew, I pay for Gas</button>
                   <button onclick="renewBond(${i}, 1)" type="button">Renew, try GasStation</button>
                   <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
@@ -159,18 +163,19 @@ async function getBond()  {
     document.getElementById("resultLabel" + id).innerHTML = "Continue in Chainweaver or Zelcore and come back when finished.... Waiting for wallet response";
 
     const cmd = {
-        pactCode: `(relay.pool.renew (read-msg 'bond))`,
+        pactCode: "(relay.pool.renew (read-msg 'bond))",
         caps: caplist,
-        sender: gasfree == 0 ? account : 'relay-free-gas',
-        gasLimit: 20000,
-        gasPrice: 0.00000001,
-        networkId: "mainnet01",
-        chainId: "2",
-        ttl: 1000,
-        signingPubKey: pubKeyToSign,
         envData: {
           bond: bondName
-        }
+        },
+        sender: gasfree == 0 ? account : 'relay-free-gas',
+        chainId: "2",
+        gasLimit: 20000,
+        gasPrice: "0.00000001",
+        signingPubKey: pubKeyToSign,
+        networkId: "mainnet01",
+        ttl: 24800,
+        nonce:"Floppie Renew Bonds"
       }
 
       const sign = await Pact.wallet.sign(cmd);
@@ -189,6 +194,89 @@ async function getBond()  {
         document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
       }
       getTX(id);
+    }
+
+    async function renewBondXWallet(id, gasfree) {
+      var bondName;
+      var pubKeyToSign;
+      var account;
+  
+  
+      if (id) {
+        const bonds = JSON.parse(localStorage.getItem("bonds"));
+        bondName = bonds[id].key;
+        pubKeyToSign = bonds[id].bond.guard.keys[0];
+        account = bonds[id].bond.account;
+      } else {
+        id = 0;
+        bondName = localStorage.getItem("bondName");
+        pubKeyToSign = localStorage.getItem("bondOwnerKey");
+        account = localStorage.getItem("account");
+      }
+  
+      var caplist = [Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])]
+  
+      if (gasfree != 0) {
+        caplist.push(Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]));
+      }
+  
+      document.getElementById("resultLabel" + id).innerHTML = "Continue in X-Wallet and come back when finished.... Waiting for wallet response";
+  
+      const cmd = {
+          pactCode: "(relay.pool.renew (read-msg 'bond))",
+          caps: caplist,
+          envData: {
+            bond: bondName
+          },
+          sender: gasfree == 0 ? account : 'relay-free-gas',
+          chainId: "2",
+          gasLimit: 20000,
+          gasPrice: "0.00000001",
+          signingPubKey: pubKeyToSign,
+          networkId: "mainnet01",
+          ttl: 24800,
+          nonce:"Floppie Renew Bonds"
+        }
+        const status = await window.kadena.request({
+          method: 'kda_checkStatus',
+          networkId: "mainnet01",
+        })
+        if (status.message.includes('Connected')) {
+          const sign = await window.kadena.request({
+            method: 'kda_requestSign',
+            data: {
+                networkId: "mainnet01",
+                signingCmd: cmd
+            }
+          });
+          console.log(sign)
+          if (sign.status === "success") {
+          const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
+            headers: {"Content-Type" : "application/json"},
+            body: JSON.stringify({"cmds": [sign.signedCmd]}),
+            method: "POST"
+          })
+          if (tx.ok) {
+            const data = await tx.json();
+            document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
+            localStorage.setItem("tx", data.requestKeys)  
+          }
+          } else {
+          document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
+          }
+          getTX(id);
+        } else {
+          // retry connection: 
+          await window.kadena.request({
+              method: "kda_disconnect",
+              networkId: "mainnet01",
+          });
+
+          await window.kadena.request({
+              method: 'kda_connect',
+              networkId: "mainnet01",
+        });
+      }
     }
 
   async function closeBond(id) {
@@ -298,5 +386,4 @@ async function getBond()  {
           console.log("No TX's in memory")
       }
   }
-
     
