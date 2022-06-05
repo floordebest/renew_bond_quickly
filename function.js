@@ -254,7 +254,7 @@ async function getBond()  {
                   }
               })
               console.log(signingCommand)
-              if (sign.status === "success") {
+              if (signingCommand.status === "success") {
                 const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
                   headers: {"Content-Type" : "application/json"},
                   body: JSON.stringify({"cmds": [signingCommand.signedCmd]}),
