@@ -171,7 +171,7 @@ async function getBond()  {
         sender: gasfree == 0 ? account : 'relay-free-gas',
         chainId: "2",
         gasLimit: 20000,
-        gasPrice: "0.00000001",
+        gasPrice: 0.00000001,
         signingPubKey: pubKeyToSign,
         networkId: "mainnet01",
         ttl: 24800,
@@ -231,7 +231,7 @@ async function getBond()  {
           sender: gasfree == 0 ? account : 'relay-free-gas',
           chainId: "2",
           gasLimit: 20000,
-          gasPrice: "0.00000001",
+          gasPrice: 0.00000001,
           signingPubKey: pubKeyToSign,
           networkId: "mainnet01",
           ttl: 24800,
@@ -300,7 +300,7 @@ async function getBond()  {
     const cmd = {
       pactCode: `(relay.pool.unbond (read-msg 'bond))`,
       caps: [
-        //Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
+        Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
         Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])
       ],
       sender: account,
