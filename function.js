@@ -237,47 +237,45 @@ async function getBond()  {
           ttl: 24800,
           nonce:"Floppie Renew Bonds"
         }
-        const status = await window.kadena.request({
-          method: 'kda_checkStatus',
-          networkId: "mainnet01",
-        })
-        if (status.message.includes('Connected')) {
-          const sign = await window.kadena.request({
-            method: 'kda_requestSign',
-            data: {
-                networkId: "mainnet01",
-                signingCmd: cmd
-            }
-          });
-          console.log(sign)
-          if (sign.status === "success") {
-          const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
-            headers: {"Content-Type" : "application/json"},
-            body: JSON.stringify({"cmds": [sign.signedCmd]}),
-            method: "POST"
-          })
-          if (tx.ok) {
-            const data = await tx.json();
-            document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
-            localStorage.setItem("tx", data.requestKeys)  
-          }
-          } else {
-          document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
-          }
-          getTX(id);
-        } else {
-          // retry connection: 
-          await window.kadena.request({
-              method: "kda_disconnect",
-              networkId: "mainnet01",
-          });
 
-          await window.kadena.request({
-              method: 'kda_connect',
-              networkId: "mainnet01",
-        });
+        try {
+          // Re-establish X-Wallet connectiong
+          let connectionStatus = await XwalletConnected();
+
+          console.log(connectionStatus + " to X-Wallet");
+
+          // If connected send command to sign
+          if (connectionStatus === "Connected") {
+              const signingCommand = await window.kadena.request({
+                  method: 'kda_requestSign',
+                  data: {
+                      networkId: "mainnet01",
+                      signingCmd: cmd
+                  }
+              })
+              console.log(signingCommand)
+              if (sign.status === "success") {
+                const tx = await fetch("https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact/api/v1/send", {
+                  headers: {"Content-Type" : "application/json"},
+                  body: JSON.stringify({"cmds": [signingCommand.signedCmd]}),
+                  method: "POST"
+                })
+                if (tx.ok) {
+                  const data = await tx.json();
+                  document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + data.requestKeys + "\n..... Waiting for result....";
+                  localStorage.setItem("tx", data.requestKeys)  
+                }
+                } else {
+                document.getElementById("resultLabel" + id).innerHTML = "Something is wrong with signing, or signing got cancelled. You can try again";
+                }
+                getTX(id);
+          } else {
+              throw "Error, can't connect to X-Wallet"
+          }
+      } catch (error) {
+          alert(error)
       }
-    }
+  }
 
   async function closeBond(id) {
     var bondName;
@@ -386,4 +384,44 @@ async function getBond()  {
           console.log("No TX's in memory")
       }
   }
+
+  async function XwalletConnected() {
+
+    if (window.kadena.isKadena) {
+        console.log("XWallet Available")
+        
+        const status = await kadena.request({
+            method: 'kda_checkStatus',
+            networkId: "mainnet01",
+        })
+        
+        if (status.message.includes('Connected')) {
+            return "Connected"
+        } else {
+            // retry connection: 
+            await window.kadena.request({
+                method: "kda_disconnect",
+                networkId: "mainnet01",
+            });
+
+            await kadena.request({
+                method: 'kda_connect',
+                networkId: "mainnet01",
+              });
+        
+            const status = await kadena.request({
+                method: 'kda_checkStatus',
+                networkId: "mainnet01",
+            })
+
+            if (status.message.includes('Connected')) {
+                return "Connected"
+            } else {
+                throw "Can't connect to X-Wallet, restart your browser and try again"
+            }
+        }
+    } else {
+        throw "Not Available"
+    }    
+}
     
