@@ -65,6 +65,10 @@ async function getBond()  {
             <p id="pLabel">
               <label id="resultLabel0"></label>
             </p>
+            <p>
+            <input id="privKey" placeholder="Enter PrivateKey"/>
+            <button onclick="signPrivKey(0)" type="button">Renew with Private Key</button>
+            </p>
           </div>
         `
       }
@@ -110,8 +114,13 @@ async function getBond()  {
                   <button onclick="renewBond(${i}, 0)" type="button">Renew, I pay for Gas</button>
                   <button onclick="renewBond(${i}, 1)" type="button">Renew, try GasStation</button>
                   <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
+                  <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
                   <p id="pLabel">
                     <label id="resultLabel${i}"></label>
+                  </p>
+                  <p>
+                  <input id="privKey" placeholder="Enter PrivateKey"/>
+                  <button onclick="signPrivKey(${i})" type="button">Renew with Private Key</button>
                   </p>
                 </div>
               `
@@ -136,11 +145,61 @@ async function getBond()  {
     }
   }
 
-  async function renewBond(id, gasfree) {
+  async function signPrivKey(id) {
     var bondName;
     var pubKeyToSign;
     var account;
 
+    const privKey = document.getElementById("privKey").value;
+
+    if (id) {
+      const bonds = JSON.parse(localStorage.getItem("bonds"));
+      bondName = bonds[id].key;
+      pubKeyToSign = bonds[id].bond.guard.keys[0];
+      account = bonds[id].bond.account;
+    } else {
+      id = 0;
+      bondName = localStorage.getItem("bondName");
+      pubKeyToSign = localStorage.getItem("bondOwnerKey");
+      account = localStorage.getItem("account");
+    }
+
+    if (!privKey) {
+      alert("Please Enter a valid private key")
+    }
+
+    const cmds = [
+      {
+        networkId: "mainnet01",
+        type: "exec",
+        keyPair : {
+          publicKey: pubKeyToSign,
+          secretKey: privKey,
+          clist: [Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName]), 
+        ]
+        },
+        pactCode: "(relay.pool.renew (read-msg 'bond))",
+        envData: {
+          bond: bondName
+        },
+        meta: Pact.lang.mkMeta(account, "2", 0.000001, 20000, creationTime(), 24800)
+      }
+    ]
+
+    const sign = await Pact.fetch.send(cmds, "https://api.chainweb.com/chainweb/0.0/mainnet01/chain/2/pact")
+    if (sign.requestKeys) {
+      document.getElementById("resultLabel" + id).innerHTML = "Send to blockchain, request key: " + sign.requestKeys + "\n..... Waiting for result....";
+      localStorage.setItem("tx", sign.requestKeys)  
+    } else {
+      document.getElementById("resultLabel" + id).innerHTML = `Something is wrong with signing:  ${sign}`;
+    }
+    getTX(id);
+  }
+
+  async function renewBond(id, gasfree) {
+    var bondName;
+    var pubKeyToSign;
+    var account;
 
     if (id) {
       const bonds = JSON.parse(localStorage.getItem("bonds"));
