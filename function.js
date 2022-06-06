@@ -114,7 +114,6 @@ async function getBond()  {
                   <button onclick="renewBond(${i}, 0)" type="button">Renew, I pay for Gas</button>
                   <button onclick="renewBond(${i}, 1)" type="button">Renew, try GasStation</button>
                   <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
-                  <button onclick="closeBond(${i})" type="button">Close/Stop bond</button>
                   <p id="pLabel">
                     <label id="resultLabel${i}"></label>
                   </p>
