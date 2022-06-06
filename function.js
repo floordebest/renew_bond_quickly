@@ -182,7 +182,7 @@ async function getBond()  {
         envData: {
           bond: bondName
         },
-        meta: Pact.lang.mkMeta(account, "2", 0.000001, 20000, creationTime(), 24800)
+        meta: Pact.lang.mkMeta(account, "2", 0.00000001, 20000, creationTime(), 24800)
       }
     ]
 
