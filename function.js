@@ -358,7 +358,7 @@ async function getBond()  {
     const cmd = {
       pactCode: `(relay.pool.unbond (read-msg 'bond))`,
       caps: [
-        Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
+        //Pact.lang.mkCap("Gas Station", "free gas", "relay.gas-station.GAS_PAYER", ["free-gas", {int: 1}, 1.0]),
         Pact.lang.mkCap("Bonder", "Bond", "relay.pool.BONDER", [bondName])
       ],
       sender: account,
